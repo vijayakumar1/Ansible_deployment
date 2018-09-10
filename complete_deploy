@@ -1,0 +1,124 @@
+---
+- hosts: ds_64
+  user: acsapp
+  vars:
+  - var1: pjt
+  tasks:
+
+  - name : Check the appserver directory is available are not
+    shell: if [ -d /appserver/{{pjt}}/ ]; then echo "its ok" ; else mkdir /appserver/{{pjt}}/ ; fi
+    register: apt
+
+  - name: check the status
+    debug: var=apt.stdout
+
+  - name: checking logs dir is there are not
+    shell: if [ -d /appserver/{{pjt}}/logs/ ]; then echo "its ok" ; else mkdir /appserver/{{pjt}}/logs/ ; fi
+
+  - name : Check the appserver directory is available are not
+    shell: cd /appserver/{{pjt}}/ ; chmod 777 logs
+
+  - name: check config dir is there are not
+    shell: if [ -d /appserver/{{pjt}}/conf/ ]; then echo "its ok" ; else mkdir /appserver/{{pjt}}/conf/ ; fi
+
+  - name : Check the appserver directory is available are not
+    shell: cd /appserver/{{pjt}}/ ; chmod 777 conf
+
+  - name : Check the backup files directory is available are not
+    shell: if [ -d /backup/{{pjt}}/ ]; then echo "its ok" ; else mkdir /backup/{{pjt}}/ ; fi
+    register: bkp
+
+  - name: check the status
+    debug: var=bkp.stdout
+
+  - name : Check the backup files directory is available are not
+    shell: if [ -d /backup/{{pjt}}/bkp/ ]; then echo "its ok" ; else mkdir /backup/{{pjt}}/bkp/ ; fi
+    register: acs_bkp
+
+  - name: check the status
+    debug: var=acs_bkp.stdout
+
+  - name : Check the backup files directory is available are not
+- name : Check the backup files directory is available are not
+    shell: if [ -d /backup/{{pjt}}/tbd/ ]; then echo "its ok" ; else mkdir /backup/{{pjt}}/tbd/ ; fi
+    register: acs_tbd
+
+  - name: check the status
+    debug: var=acs_tbd.stdout
+
+
+  - name : Check the appserver directory is available are not
+    shell: if [ -d /appserver/{{pjt}}/logs/ ]; then echo "its ok" ; else echo "not ok" ; fi
+    register: apt_result
+
+  - name: check the status
+    debug: var=apt.stdout
+
+  - name: setup the things for first time deploy
+    copy: src={{ item }} dest=/appserver/{{pjt}}/conf/
+    with_fileglob:
+    - /appserver/jenkins-workspace/{{pjt}}/{{pjt}}/config/*
+    when: apt_result.stdout== "not ok"
+
+  - name: setup the things for first time deploy
+    copy: src={{ item }} dest=/appserver/{{pjt}}/
+    with_fileglob:
+    - /appserver/jenkins-workspace/{{pjt}}/{{pjt}}/*.sh
+
+  - name : Check in the appserver jar file  is available are not
+    shell: if [ -d /appserver/{{pjt}}/*.jar ]; then echo "its ok" ; else echo "not ok" ; fi
+    register: jar_resulit
+
+#  - name: stat foo
+#    stat: path=/appserver/{{pjt}}/*.jar
+#    register: jar1_result
+
+
+  - name: Stop the the exiting jar process
+#    shell: if [ -d /appserver/{{pjt}}/ ] then echo "its ok" ; else  sh run-java-app.sh *.jar stop 
+    shell: cd /appserver/{{pjt}}/ ; sh run-java-app.sh *.jar stop ; sleep 3
+#    when: jar_result.stdout== "its ok"
+#   when: jar1_result.stat.exists
+#    when: jar_result is success
+  #    when: jar_result is success
+
+  - name: Deploy the new jar file into vertx
+    copy: src="{{item}}" dest=/appserver/{{pjt}}/
+    with_fileglob:
+      - /appserver/jenkins-workspace/{{pjt}}/{{pjt}}/build/libs/*capsule.jar
+#      - /home/acsapp/ansi@scripts/jenkins_work_space/{{pjt}}/build/libs/*capsule.jar
+
+
+  - name : Store jar into capsule file
+#    shell: if [ -f /appserver/{{pjt}}/*capsule.jar ]; then cd /appserver/{{pjt}}/ ; ls *capsule.jar ; echo "ok" ; fi
+    shell: cd /appserver/{{pjt}}/; ls *capsule.jar
+    register: capsule
+#    when: jar_result.stdout== "not ok"
+
+  - name: Take backup with time stamp
+    shell: mv /appserver/{{pjt}}/{{capsule.stdout}} "/backup/{{pjt}}/bkp"/{{capsule.stdout}}_`date +%d-%m-%y`
+
+#  - name: Deploy the new jar file into vertx
+#    copy: src="{{item}}" dest=/appserver/{{pjt}}/
+#    with_fileglob:
+#      - /appserver/jenkins-workspace/{{pjt}}/{{pjt}}/build/libs/*capsule.jar
+#      - /home/acsapp/ansi@scripts/jenkins_work_space/{{pjt}}/build/libs/*capsule.jar
+
+  - name: Deploy the new jar file into vertx
+    copy: src="{{item}}" dest=/backup/{{pjt}}/tbd/
+    with_fileglob:
+      - /appserver/jenkins-workspace/{{pjt}}/{{pjt}}/build/libs/*capsule.jar
+
+  - name: Up the application with build
+    shell: cd /appserver/{{pjt}}/ ; nohup sh run-java-app.sh *.jar start &
+
+
+  - name: Checking if its successfully deployed in to  the vertex
+    shell: cd /appserver/{{pjt}}/ ; nohup sh run-java-app.sh *.jar status &
+    register: jar_status
+
+  - name: Show the output
+    debug: var=jar_status.stdout
+
+
+                                                                                                                             81,1          50%
